@@ -1,10 +1,10 @@
-# xcframework
+# fatframework
 
 [![Swift Version](https://img.shields.io/badge/Swift-5.1-orange.svg?style=for-the-badge)](https://swift.org)
 [![GitHub release](https://img.shields.io/github/release/jeffctown/xcframework.svg?style=for-the-badge)](https://github.com/jeffctown/xcframework/releases)
 [![GitHub license](https://img.shields.io/badge/license-MIT-lightgrey.svg?style=for-the-badge)](https://raw.githubusercontent.com/jeffctown/xcframework/master/LICENSE.md) 
 
-xcframework is a tool to create XCFrameworks.
+fatframework is a tool to based on [xcframework](https://github.com/jeffctown/xcframework)
 
 ## Installation
 
