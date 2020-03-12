@@ -81,7 +81,7 @@ public class XCFrameworkBuilder {
         guard let buildDirectory = buildDirectory else {
             return .failure(XCFrameworkError.buildDirectoryNotFound)
         }
-        
+
         print("Creating \(name)...")
         
         //final build location
@@ -89,12 +89,17 @@ public class XCFrameworkBuilder {
         
         //final xcframework location
         let finalOutputDirectory = outputDirectory.hasSuffix("/") ? outputDirectory : outputDirectory + "/"
-        let finalOutput = finalOutputDirectory + name + ".xcframework"
+        let finalOutput = finalOutputDirectory + name + ".framework"
         
         shell.usr.rm(finalOutput)
-        //array of arguments for the final xcframework construction
-        var frameworksArguments = ["-create-xcframework"]
         
+        let resultCreateDir = shell.bin.mkdir.dynamicallyCall(withArguments: ["-p", finalOutput])
+        if !resultCreateDir.isSuccess {
+            return .failure(.buildError(resultCreateDir.stderr + "\nXCFramework Build Error From Running: 'mkdir \(["-p", finalOutput].joined(separator: " "))'"))
+        }
+        //array of arguments for the final xcframework construction
+        var frameworksArguments: [String] = []
+
         //try all supported SDKs
         do {
             if let watchOSScheme = watchOSScheme {
@@ -121,17 +126,30 @@ public class XCFrameworkBuilder {
             return .failure(.buildError(error.localizedDescription))
         }
         
+        let copyArguments = ["-r", frameworksArguments[0], finalOutputDirectory]
+        
+        let resultCopy = shell.bin.cp.dynamicallyCall(withArguments: copyArguments)
+        if !resultCopy.isSuccess {
+            return .failure(.buildError(resultCopy.stderr + "\nXCFramework Build Error From Running: 'cp \(copyArguments.joined(separator: " "))'"))
+        }
+        
         print("Combining...")
-        //add output to final command
-        frameworksArguments.append("-output")
-        frameworksArguments.append(finalOutput)
-        if verbose {
-            print("xcodebuild \(frameworksArguments.joined(separator: " "))")
+        
+        
+        let lipoArguments = ["-create", "-output",  finalOutput + "/" + name, frameworksArguments[0] + "/" + name, frameworksArguments[1] + "/" + name]
+        let resultLipo = shell.lipo.dynamicallyCall(withArguments: lipoArguments)
+        
+        if !resultLipo.isSuccess {
+            return .failure(.buildError(resultLipo.stderr + "\nXCFramework Build Error From Running: 'lipo \(lipoArguments.joined(separator: " "))'"))
         }
-        let result = shell.usr.bin.xcodebuild.dynamicallyCall(withArguments: frameworksArguments)
-        if !result.isSuccess {
-            return .failure(.buildError(result.stderr + "\nXCFramework Build Error From Running: 'xcodebuild \(frameworksArguments.joined(separator: " "))'"))
+        
+        let copyMappingsArguments = ["-r", frameworksArguments[1] + "/Modules/", finalOutput + "/Modules/"]
+        let resultCopyModules = shell.bin.cp.dynamicallyCall(withArguments: copyMappingsArguments)
+        
+        if !resultCopyModules.isSuccess {
+            return .failure(.buildError(resultCopyModules.stderr + "\nXCFramework Build Error From Running: 'cp \(copyMappingsArguments.joined(separator: " "))'"))
         }
+        
         print("Success. \(finalOutput)")
         return .success(())
     }
@@ -143,7 +161,7 @@ public class XCFrameworkBuilder {
         let archivePath = buildPath + "\(scheme)-\(sdk.rawValue).xcarchive"
         //array of arguments for the archive of each framework
         //weird interpolation errors are forcing me to use this "" + syntax.  not sure if this is a compiler bug or not.
-        var archiveArguments = ["-project", "\"" + project + "\"", "-scheme", "\"" + scheme + "\"", "archive", "SKIP_INSTALL=NO", "BUILD_LIBRARY_FOR_DISTRIBUTION=YES"]
+        var archiveArguments = ["-project", "\"" + project + "\"", "-scheme", "\"" + scheme + "\"", "archive", "SKIP_INSTALL=NO"]
         if let compilerArguments = compilerArguments {
             archiveArguments.append(contentsOf: compilerArguments)
         }
@@ -151,14 +169,17 @@ public class XCFrameworkBuilder {
         if verbose {
             print("   xcodebuild \(archiveArguments.joined(separator: " "))")
         }
-        let result = shell.usr.bin.xcodebuild.dynamicallyCall(withArguments: archiveArguments)
+        shell.usr.xcode_select.dynamicallyCall(withArguments: ["/Applications/Xcode-11.3.1.app"])
+
+        let result = ShellTrampoline(url: URL(string:"/Applications/Xcode-11.3.1.app/Contents/Developer/")!).usr.bin.xcodebuild.dynamicallyCall(withArguments: archiveArguments)
         if !result.isSuccess {
             let errorMessage = result.stderr + "\nArchive Error From Running: 'xcodebuild \(archiveArguments.joined(separator: " "))'"
             throw XCFrameworkError.buildError(errorMessage)
         }
         //add this framework to the list for the final output command
-        frameworkArguments.append("-framework")
         frameworkArguments.append(archivePath + "/Products/Library/Frameworks/\(name).framework")
+        
+        print("frameworkArguments :" + (frameworkArguments.last ?? "nil"))
         return frameworkArguments
     }
     
