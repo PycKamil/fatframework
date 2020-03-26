@@ -17,6 +17,7 @@ public class XCFrameworkBuilder {
     public var watchOSScheme: String?
     public var tvOSScheme: String?
     public var macOSScheme: String?
+    public var xcodePath: String?
     public var verbose: Bool = false
     public var compilerArguments: [String]?
     
@@ -169,13 +170,23 @@ public class XCFrameworkBuilder {
         if verbose {
             print("   xcodebuild \(archiveArguments.joined(separator: " "))")
         }
-        shell.usr.xcode_select.dynamicallyCall(withArguments: ["/Applications/Xcode-11.3.1.app"])
+        
+        if let xcodePath = xcodePath {
+            shell.usr.xcode_select.dynamicallyCall(withArguments: [xcodePath])
 
-        let result = ShellTrampoline(url: URL(string:"/Applications/Xcode-11.3.1.app/Contents/Developer/")!).usr.bin.xcodebuild.dynamicallyCall(withArguments: archiveArguments)
-        if !result.isSuccess {
-            let errorMessage = result.stderr + "\nArchive Error From Running: 'xcodebuild \(archiveArguments.joined(separator: " "))'"
-            throw XCFrameworkError.buildError(errorMessage)
+            let result = ShellTrampoline(url: URL(string:xcodePath + "/Contents/Developer/")!).usr.bin.xcodebuild.dynamicallyCall(withArguments: archiveArguments)
+            if !result.isSuccess {
+                let errorMessage = result.stderr + "\nArchive Error From Running: 'xcodebuild \(archiveArguments.joined(separator: " "))'"
+                throw XCFrameworkError.buildError(errorMessage)
+            }
+        } else {
+            let result = shell.usr.bin.xcodebuild.dynamicallyCall(withArguments: archiveArguments)
+            if !result.isSuccess {
+                let errorMessage = result.stderr + "\nArchive Error From Running: 'xcodebuild \(archiveArguments.joined(separator: " "))'"
+                throw XCFrameworkError.buildError(errorMessage)
+            }
         }
+
         //add this framework to the list for the final output command
         frameworkArguments.append(archivePath + "/Products/Library/Frameworks/\(name).framework")
         

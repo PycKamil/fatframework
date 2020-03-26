@@ -28,11 +28,12 @@ struct BuildCommand: CommandProtocol {
         let watchOSScheme: String?
         let tvOSScheme: String?
         let macOSScheme: String?
+        let xcodePath: String?
         let verbose: Bool
         let compilerArguments: [String]
         
-        static func create(_ project: String?) -> (String?) -> (String) -> (String) -> (String?) -> (String?) -> (String?) -> (String?) -> (Bool) -> ([String]) -> Options {
-            return { name in { outputDirectory in { buildDirectory in { iOSScheme in { watchOSScheme in { tvOSScheme in { macOSScheme in { verbose in { compilerArguments in Options(project: project, name: name, outputDirectory: outputDirectory, buildDirectory: buildDirectory, iOSScheme: iOSScheme, watchOSScheme: watchOSScheme, tvOSScheme: tvOSScheme, macOSScheme: macOSScheme, verbose: verbose, compilerArguments: compilerArguments) } } } } } } } } }
+        static func create(_ project: String?) -> (String?) -> (String) -> (String) -> (String?) -> (String?) -> (String?) -> (String?) -> (String?) -> (Bool) -> ([String]) -> Options {
+            return { name in { outputDirectory in { buildDirectory in { iOSScheme in { watchOSScheme in { tvOSScheme in { macOSScheme in { xcodePath in { verbose in { compilerArguments in Options(project: project, name: name, outputDirectory: outputDirectory, buildDirectory: buildDirectory, iOSScheme: iOSScheme, watchOSScheme: watchOSScheme, tvOSScheme: tvOSScheme, macOSScheme: macOSScheme, xcodePath: xcodePath, verbose: verbose, compilerArguments: compilerArguments) } } } } } } } } } }
         }
         
         static func evaluate(_ mode: CommandMode) -> Result<Options, CommandantError<CommandantError<()>>> {
@@ -46,6 +47,7 @@ struct BuildCommand: CommandProtocol {
                 <*> mode <| Option(key: "watchos", defaultValue: nil, usage: "the scheme for your watchOS target")
                 <*> mode <| Option(key: "tvos", defaultValue: nil, usage: "the scheme for your tvOS target")
                 <*> mode <| Option(key: "macos", defaultValue: nil, usage: "the scheme for your macOS target")
+                <*> mode <| Option(key: "xcodePath", defaultValue: nil, usage: "path to Xcode app you would like to use")
                 <*> mode <| Switch(key: "verbose", usage: "enable verbose logs")
                 <*> mode <| Argument(defaultValue: [], usage: "any extra xcodebuild arguments to be used in the framework archiving")
         }
@@ -61,6 +63,7 @@ struct BuildCommand: CommandProtocol {
             builder.watchOSScheme = options.watchOSScheme
             builder.tvOSScheme = options.tvOSScheme
             builder.macOSScheme = options.macOSScheme
+            builder.xcodePath = options.xcodePath
             builder.verbose = options.verbose
             builder.compilerArguments = options.compilerArguments
         }
