@@ -136,7 +136,6 @@ public class XCFrameworkBuilder {
         
         print("Combining...")
         
-        
         let lipoArguments = ["-create", "-output",  finalOutput + "/" + name, frameworksArguments[0] + "/" + name, frameworksArguments[1] + "/" + name]
         let resultLipo = shell.lipo.dynamicallyCall(withArguments: lipoArguments)
         
@@ -171,20 +170,18 @@ public class XCFrameworkBuilder {
             print("   xcodebuild \(archiveArguments.joined(separator: " "))")
         }
         
-        if let xcodePath = xcodePath {
+        let result: Process.FancyResult
+        if let xcodePath = xcodePath,
+            let developerDir = URL(string:xcodePath + "/Contents/Developer/"),
+            FileManager().fileExists(atPath: developerDir.absoluteString) {
             shell.usr.xcode_select.dynamicallyCall(withArguments: [xcodePath])
-
-            let result = ShellTrampoline(url: URL(string:xcodePath + "/Contents/Developer/")!).usr.bin.xcodebuild.dynamicallyCall(withArguments: archiveArguments)
-            if !result.isSuccess {
-                let errorMessage = result.stderr + "\nArchive Error From Running: 'xcodebuild \(archiveArguments.joined(separator: " "))'"
-                throw XCFrameworkError.buildError(errorMessage)
-            }
+            result = ShellTrampoline(url: developerDir).usr.bin.xcodebuild.dynamicallyCall(withArguments: archiveArguments)
         } else {
-            let result = shell.usr.bin.xcodebuild.dynamicallyCall(withArguments: archiveArguments)
-            if !result.isSuccess {
-                let errorMessage = result.stderr + "\nArchive Error From Running: 'xcodebuild \(archiveArguments.joined(separator: " "))'"
-                throw XCFrameworkError.buildError(errorMessage)
-            }
+            result = shell.usr.bin.xcodebuild.dynamicallyCall(withArguments: archiveArguments)
+        }
+        if !result.isSuccess {
+            let errorMessage = result.stderr + "\nArchive Error From Running: 'xcodebuild \(archiveArguments.joined(separator: " "))'"
+            throw XCFrameworkError.buildError(errorMessage + "\n LOG:\n" + result.stdout.suffix(100_000))
         }
 
         //add this framework to the list for the final output command
