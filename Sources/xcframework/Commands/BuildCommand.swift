@@ -57,7 +57,7 @@ struct BuildCommand: CommandProtocol {
                 return xcodePath
             }
             
-            if let xcodeVersion = FileManager.default.contents(atPath: ".xcode-version") {
+            if let xcodeVersion = try? String(contentsOfFile: FileManager.default.currentDirectoryPath.appending("/.xcode-version"), encoding: .ascii) {
                 return "/Applications/Xcode-\(xcodeVersion).app"
             }
             
