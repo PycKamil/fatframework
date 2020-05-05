@@ -51,6 +51,18 @@ struct BuildCommand: CommandProtocol {
                 <*> mode <| Switch(key: "verbose", usage: "enable verbose logs")
                 <*> mode <| Argument(defaultValue: [], usage: "any extra xcodebuild arguments to be used in the framework archiving")
         }
+        
+        var resolvedXcodePath: String? {
+            if let xcodePath = xcodePath {
+                return xcodePath
+            }
+            
+            if let xcodeVersion = try? String(contentsOfFile: FileManager.default.currentDirectoryPath.appending("/.xcode-version"), encoding: .ascii) {
+                return "/Applications/Xcode-\(xcodeVersion).app"
+            }
+            
+            return nil
+        }
     }
     
     func run(_ options: Options) -> Result<(), CommandantError<()>> {
@@ -63,7 +75,7 @@ struct BuildCommand: CommandProtocol {
             builder.watchOSScheme = options.watchOSScheme
             builder.tvOSScheme = options.tvOSScheme
             builder.macOSScheme = options.macOSScheme
-            builder.xcodePath = options.xcodePath
+            builder.xcodePath = options.resolvedXcodePath
             builder.verbose = options.verbose
             builder.compilerArguments = options.compilerArguments
         }

@@ -174,6 +174,7 @@ public class XCFrameworkBuilder {
         if let xcodePath = xcodePath,
             let developerDir = URL(string:xcodePath + "/Contents/Developer/"),
             FileManager().fileExists(atPath: developerDir.absoluteString) {
+            print("Using \(xcodePath)")
             shell.usr.xcode_select.dynamicallyCall(withArguments: [xcodePath])
             result = ShellTrampoline(url: developerDir).usr.bin.xcodebuild.dynamicallyCall(withArguments: archiveArguments)
         } else {
