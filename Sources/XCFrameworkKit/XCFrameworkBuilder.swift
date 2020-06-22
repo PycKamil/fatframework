@@ -7,6 +7,7 @@
 
 import Foundation
 import Shell
+import SwiftShell
 
 public class XCFrameworkBuilder {
     public var name: String?
@@ -108,9 +109,21 @@ public class XCFrameworkBuilder {
                 try frameworksArguments.append(contentsOf: buildScheme(scheme: watchOSScheme, sdk: .watchOSSim, project: project, name: name, buildPath: finalBuildDirectory))
             }
             
-            if let iOSScheme = iOSScheme {
-                try frameworksArguments.append(contentsOf: buildScheme(scheme: iOSScheme, sdk: .iOS, project: project, name: name, buildPath: finalBuildDirectory))
-                try frameworksArguments.append(contentsOf: buildScheme(scheme: iOSScheme, sdk: .iOSSim, project: project, name: name, buildPath: finalBuildDirectory))
+            if var iOSScheme = iOSScheme {
+                var iOSProject = project
+                if FileManager().fileExists(atPath: project + "/Package.swift") {
+                    iOSProject = finalBuildDirectory + "/" + iOSScheme + ".xcodeproj"
+
+                    var swiftctx = CustomContext(main)
+                    swiftctx.currentdirectory = project
+                    swiftctx.env["PATH"] = "/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/Library/Apple/usr/bin:"
+                    swiftctx.env["DEVELOPER_DIR"] = (xcodePath ?? "") + "/Contents/Developer/"
+                    try swiftctx.runAndPrint(bash: "swift package generate-xcodeproj --output " + finalBuildDirectory)                   
+                    iOSScheme = iOSScheme + "-Package"
+                }
+
+                try frameworksArguments.append(contentsOf: buildScheme(scheme: iOSScheme, sdk: .iOS, project: iOSProject, name: name, buildPath: finalBuildDirectory))
+                try frameworksArguments.append(contentsOf: buildScheme(scheme: iOSScheme, sdk: .iOSSim, project: iOSProject, name: name, buildPath: finalBuildDirectory))
             }
             
             if let tvOSScheme = tvOSScheme {
